@@ -103,14 +103,9 @@
     <h1>wav-to-header</h1>
 
     <h2 class="description">
-        This utility converts WAV audio files into C header files for use in embedded systems and audio projects. 
-        Drag & drop multiple WAV files below, and the tool will generate a single `.h` file containing structured metadata and sample data.
+        This converts .wav files to C header files for use in embedded audio projects.
         <br><br>
-        Requirements:  
-        - Accepted format: PCM WAV files 
-        - Any sample rate is accepted, but data will be stored as raw integer values.  
-        - Stereo files will be automatically converted to mono.  
-        - Sample values are scaled to the 0–4095 range.  
+        Stereo files will be converted to mono. Output values scaled to 0-4095 for 12-bit output.
     </h2>
 
     <div class="upload-container">
