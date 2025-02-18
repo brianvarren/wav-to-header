@@ -25,10 +25,23 @@
             margin-top: 40px;
         }
 
-        input[type="file"] {
-            display: block;
+        .drop-area {
+            border: 2px dashed white;
+            padding: 40px;
+            width: 60%;
             margin: 20px auto;
+            text-align: center;
             font-size: 1.2rem;
+            cursor: pointer;
+            transition: background 0.3s ease-in-out;
+        }
+
+        .drop-area.highlight {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        input[type="file"] {
+            display: none;
         }
 
         button {
@@ -68,7 +81,10 @@
     <h1>wav-to-header</h1>
 
     <div class="upload-container">
-        <input type="file" id="fileInput">
+        <div class="drop-area" id="dropArea">
+            Drag & Drop a WAV file here or <span style="text-decoration: underline;">click to browse</span>
+            <input type="file" id="fileInput" accept=".wav">
+        </div>
         <button onclick="uploadFile()">Convert</button>
     </div>
 
@@ -77,8 +93,30 @@
     </div>
 
     <script>
+        const dropArea = document.getElementById("dropArea");
+        const fileInput = document.getElementById("fileInput");
+
+        dropArea.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            dropArea.classList.add("highlight");
+        });
+
+        dropArea.addEventListener("dragleave", () => {
+            dropArea.classList.remove("highlight");
+        });
+
+        dropArea.addEventListener("drop", (event) => {
+            event.preventDefault();
+            dropArea.classList.remove("highlight");
+
+            if (event.dataTransfer.files.length) {
+                fileInput.files = event.dataTransfer.files;
+            }
+        });
+
+        dropArea.addEventListener("click", () => fileInput.click());
+
         async function uploadFile() {
-            const fileInput = document.getElementById("fileInput");
             if (!fileInput.files.length) {
                 alert("Please select a file.");
                 return;
