@@ -21,8 +21,16 @@
             margin-top: 20px;
         }
 
+        .description {
+            font-size: 1rem;
+            margin: 15px auto;
+            width: 60%;
+            line-height: 1.5;
+            color: #ddd;
+        }
+
         .upload-container {
-            margin-top: 40px;
+            margin-top: 20px;
         }
 
         .drop-area {
@@ -93,6 +101,17 @@
 <body>
 
     <h1>wav-to-header</h1>
+
+    <p class="description">
+        This utility converts **WAV audio files** into **C header files** for use in embedded systems and audio projects. 
+        Drag & drop multiple WAV files below, and the tool will generate a single `.h` file containing **structured metadata and sample data**.
+        <br><br>
+        **Requirements:**  
+        - Accepted format: **PCM WAV files**  
+        - **Any sample rate** is accepted, but data will be stored as raw integer values.  
+        - Stereo files will be automatically **converted to mono**.  
+        - Sample values are **scaled to the 0–4095 range**.  
+    </p>
 
     <div class="upload-container">
         <div class="drop-area" id="dropArea">
@@ -168,7 +187,7 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = "samples.h";
+                a.download = "converted_samples.h";
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
