@@ -1,0 +1,8 @@
+name = "wav-to-header"
+type = "module"
+account_id = "7c26ae991163695203ac3aff9b283f4a"
+
+[[r2_buckets]]
+binding = "AUDIO_BUCKET"
+bucket_name = "wav-to-header-storage"
+preview_bucket_name = "wav-to-header-storage-preview"
