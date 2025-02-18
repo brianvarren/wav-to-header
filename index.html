@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAV to Header Converter</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        #drop-area { border: 2px dashed #ccc; padding: 20px; cursor: pointer; }
+        #drop-area.highlight { border-color: green; }
+        #output { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>Drag and Drop a WAV File</h2>
+    <div id="drop-area">Drop your WAV file here</div>
+    <div id="output"></div>
+
+    <script>
+        let dropArea = document.getElementById("drop-area");
+
+        dropArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropArea.classList.add("highlight");
+        });
+
+        dropArea.addEventListener("dragleave", () => {
+            dropArea.classList.remove("highlight");
+        });
+
+        dropArea.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            dropArea.classList.remove("highlight");
+
+            let file = e.dataTransfer.files[0];
+            if (!file.name.endsWith(".wav")) {
+                alert("Only WAV files are supported!");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("file", file);
+
+            let response = await fetch("https://wav-to-header.brianvarren.workers.dev", { 
+                method: "POST", 
+                body: formData 
+            });
+
+            if (response.ok) {
+                let blob = await response.blob();
+                let url = window.URL.createObjectURL(blob);
+                let a = document.createElement("a");
+                a.href = url;
+                a.download = file.name.replace(".wav", ".h");
+                document.getElementById("output").innerHTML = "Download ready: ";
+                document.getElementById("output").appendChild(a);
+                a.innerText = "Download";
+            } else {
+                alert("Conversion failed!");
+            }
+        });
+    </script>
+</body>
+</html>
