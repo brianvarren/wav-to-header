@@ -17,8 +17,8 @@ export default {
                 return new Response("No valid WAV files uploaded", { status: 400 });
             }
 
-            const pwmResolutionStr = formData.get("pwmResolution") || "4096";
-            const pwmResolution = Math.max(256, Math.min(65535, parseInt(pwmResolutionStr, 10) || 4096)); // Default to 12-bit
+            const pwmResolutionStr = formData.get("pwmResolution");
+            const pwmResolution = pwmResolutionStr ? parseInt(pwmResolutionStr, 10) : 4096; // Default to 4096
 
             let headerFile = `#define NUM_SAMPLES ${files.length}\n\nstruct SampleData {\n`;
             headerFile += `    const uint16_t index;\n    const int16_t* data;\n    const uint32_t size;\n    const char* name;\n};\n\n`;
@@ -28,14 +28,20 @@ export default {
             
             let sampleIndex = 0;
 
-            function scaleSamples(samples: Float32Array, bitDepth: number): Int16Array {
-                const maxValue = (1 << bitDepth) - 1; // Maximum value for the given bit depth
+            function scaleSamples(samples: Float32Array, pwmResolution: number): Int16Array {
+                const maxValue = pwmResolution - 1;
                 let scaledSamples = new Int16Array(samples.length);
-
+            
                 for (let i = 0; i < samples.length; i++) {
-                    scaledSamples[i] = Math.round(((samples[i] + 1.0) / 2.0) * maxValue); // Shift to 0-maxValue range
+                    // Convert from -1.0 to 1.0 range to 0 to maxValue range
+                    let scaled = Math.round(((samples[i] + 1.0) / 2.0) * maxValue);
+                    
+                    // Ensure we don't exceed Int16Array limits
+                    scaled = Math.min(scaled, 32767);
+                    
+                    scaledSamples[i] = scaled;
                 }
-
+            
                 return scaledSamples;
             }
 
