@@ -25,33 +25,12 @@ export default {
             
             let sampleIndex = 0;
 
-            // UI Initialization: Add a dropdown menu to select PWM resolution
-            const pwmResolutionSelect = document.createElement("select");
-            pwmResolutionSelect.id = "pwmResolution";
-            [12, 10, 8, 6].forEach(bits => {
-                const option = document.createElement("option");
-                option.value = bits.toString();
-                option.textContent = `${bits}-bit PWM`;
-                pwmResolutionSelect.appendChild(option);
-            });
-            document.body.appendChild(pwmResolutionSelect);
-
-            function scaleSamples(samples: number[], bitDepth: number): number[] {
-                const maxValue = (1 << bitDepth) - 1; // Max value for selected bit depth
-                return samples.map(sample => Math.round(sample * maxValue / 4095)); // Scale from 12-bit default
-            }
-
-            pwmResolutionSelect.addEventListener("change", (event) => {
-                const selectedBitDepth = parseInt((event.target as HTMLSelectElement).value, 10);
-                scaledSamples = scaleSamples(originalSamples, selectedBitDepth);
-                updatePlayback(); // Function to update playback with new values
-            });
-
             for (const file of files) {
                 const arrayBuffer = await file.arrayBuffer();
                 const dataView = new DataView(arrayBuffer);
                 const fileName = file.name.replace(".wav", "").replace(/\s+/g, "_");
 
+                // Validate WAV format
                 if (arrayBuffer.byteLength < 44) {
                     return new Response(`Error: ${file.name} is too short to be a valid WAV file.`, { status: 400 });
                 }
@@ -92,6 +71,7 @@ export default {
                 const samples = new Float32Array(numSamples);
                 let peak = 0;
 
+                // Convert audio to mono and normalize
                 for (let i = 0; i < numSamples; i++) {
                     let sampleValue = 0;
                     for (let ch = 0; ch < numChannels; ch++) {
@@ -106,9 +86,16 @@ export default {
                     peak = Math.max(peak, Math.abs(sampleValue));
                 }
 
-                const scaledSamples = scaleSamples(samples, 12); // Default to 12-bit scaling
+                // Normalize to 0-4095 range
+                const scaledSamples = new Int16Array(numSamples);
+                for (let i = 0; i < samples.length; i++) {
+                    scaledSamples[i] = Math.round(((samples[i] / peak) * 2047) + 2048);
+                }
 
+                // Append to metadata table
                 sampleDefinitions += `    { ${sampleIndex}, &${fileName}[0], ${numSamples}, "${fileName}" },\n`;
+
+                // Append to sample array
                 sampleArrays += `const int16_t ${fileName}[] PROGMEM = {\n`;
                 for (let i = 0; i < scaledSamples.length; i++) {
                     sampleArrays += `${scaledSamples[i]}, `;
@@ -120,6 +107,7 @@ export default {
             }
 
             sampleDefinitions += "};\n\n";
+
             const fullHeaderFile = headerFile + sampleDefinitions + sampleArrays;
 
             return new Response(fullHeaderFile, {
