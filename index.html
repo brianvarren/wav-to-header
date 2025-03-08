@@ -1,123 +1,162 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>wav-to-header</title>
-    <link href="https://fonts.googleapis.com/css2?family=CMU+Serif:ital@1&display=swap" rel="stylesheet">
-    <style>
-        body {
-            background-color: black;
-            color: white;
-            font-family: 'CMU Serif', serif;
-            font-style: italic;
-            text-align: center;
-            margin: 0;
-            padding: 0;
+export default {
+    async fetch(request: Request, env: any): Promise<Response> {
+        if (request.method !== "POST") {
+            return new Response("Only POST requests allowed", { status: 405 });
         }
-        h1 {
-            font-size: 2rem;
-            margin-top: 20px;
-        }
-        .upload-container {
-            margin-top: 20px;
-        }
-        .drop-area {
-            border: 2px dashed white;
-            padding: 40px;
-            width: 60%;
-            margin: 20px auto;
-            text-align: center;
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-        input[type="file"] {
-            display: none;
-        }
-        button {
-            background-color: white;
-            color: black;
-            font-size: 1rem;
-            padding: 10px 20px;
-            border: none;
-            cursor: pointer;
-            font-style: italic;
-        }
-        .progress-bar {
-            width: 80%;
-            height: 8px;
-            background-color: white;
-            margin: 20px auto;
-            border-radius: 5px;
-            overflow: hidden;
-            position: relative;
-        }
-        .progress-bar-inner {
-            height: 100%;
-            width: 0;
-            background-color: grey;
-            transition: width 0.3s ease-in-out;
-        }
-    </style>
-</head>
-<body>
 
-    <h1>wav-to-header</h1>
-    <div class="upload-container">
-        <label for="pwmResolution">PWM Resolution:</label>
-        <input type="number" id="pwmResolution" value="4096" min="256" max="65535" step="1">
+        try {
+            const formData = await request.formData();
+            const files: File[] = [];
 
-        
-        <div class="drop-area" id="dropArea">
-            Drag & Drop WAV files here or <span style="text-decoration: underline;">click to browse</span>
-            <input type="file" id="fileInput" multiple accept=".wav">
-        </div>
-        <button onclick="uploadFiles()">Convert</button>
-    </div>
-
-    <div class="progress-bar">
-        <div class="progress-bar-inner" id="progress"></div>
-    </div>
-
-    <script>
-        async function uploadFiles() {
-            const fileInput = document.getElementById("fileInput");
-            if (!fileInput.files.length) {
-                alert("Please select at least one file.");
-                return;
+            for (const entry of formData.entries()) {
+                const file = entry[1];
+                if (file instanceof File) files.push(file);
             }
 
-            const formData = new FormData();
-            for (let i = 0; i < fileInput.files.length; i++) {
-                formData.append(`file${i}`, fileInput.files[i]);
+            if (files.length === 0) {
+                return new Response("No valid WAV files uploaded", { status: 400 });
             }
 
-            const pwmResolution = document.getElementById("pwmResolution").value;
-            formData.append("pwmResolution", pwmResolution);
+            const pwmResolutionStr = formData.get("pwmResolution");
+            const pwmResolution = pwmResolutionStr ? parseInt(pwmResolutionStr, 10) : 12; // Default to 12-bit
 
-            const progressBar = document.getElementById("progress");
-            progressBar.style.width = "0%";
+            let headerFile = `#define NUM_SAMPLES ${files.length}\n\nstruct SampleData {\n`;
+            headerFile += `    const uint16_t index;\n    const int16_t* data;\n    const uint32_t size;\n    const char* name;\n};\n\n`;
 
-            const response = await fetch("https://wav-to-header.brianvarren.workers.dev", {
-                method: "POST",
-                body: formData,
+            let sampleDefinitions = `SampleData sample[NUM_SAMPLES] = {\n`;
+            let sampleArrays = ``;
+            
+            let sampleIndex = 0;
+
+            function scaleSamples(samples: Float32Array, bitDepth: number): Int16Array {
+                const maxValue = (1 << bitDepth) - 1; // Maximum value for the given bit depth
+                let scaledSamples = new Int16Array(samples.length);
+
+                for (let i = 0; i < samples.length; i++) {
+                    scaledSamples[i] = Math.round(((samples[i] + 1.0) / 2.0) * maxValue); // Shift to 0-maxValue range
+                }
+
+                return scaledSamples;
+            }
+
+            for (const file of files) {
+                const arrayBuffer = await file.arrayBuffer();
+                const dataView = new DataView(arrayBuffer);
+                const fileName = file.name.replace(".wav", "").replace(/\s+/g, "_");
+
+                if (arrayBuffer.byteLength < 44) {
+                    return new Response(`Error: ${file.name} is too short to be a valid WAV file.`, { status: 400 });
+                }
+
+                const riffHeader = new TextDecoder().decode(arrayBuffer.slice(0, 4));
+                const waveHeader = new TextDecoder().decode(arrayBuffer.slice(8, 12));
+                if (riffHeader !== "RIFF" || waveHeader !== "WAVE") {
+                    return new Response(`Error: ${file.name} is not a valid WAV file.`, { status: 400 });
+                }
+
+                const numChannels = dataView.getUint16(22, true);
+                const bitDepth = dataView.getUint16(34, true);
+
+                let dataOffset = 12;
+                let foundDataChunk = false;
+
+                while (dataOffset < arrayBuffer.byteLength) {
+                    const chunkId = new TextDecoder().decode(arrayBuffer.slice(dataOffset, dataOffset + 4));
+                    const chunkSize = dataView.getUint32(dataOffset + 4, true);
+                    if (chunkId.trim() === "data") {
+                        dataOffset += 8;
+                        foundDataChunk = true;
+                        break;
+                    }
+                    dataOffset += 8 + chunkSize;
+                }
+
+                if (!foundDataChunk || dataOffset >= arrayBuffer.byteLength) {
+                    return new Response(`Error: ${file.name} has no valid data chunk.`, { status: 400 });
+                }
+
+                const numSamples = (arrayBuffer.byteLength - dataOffset) / (bitDepth / 8) / numChannels;
+                if (numSamples <= 0 || numSamples > 10000000) {
+                    return new Response(`Error: ${file.name} contains invalid sample data.`, { status: 400 });
+                }
+
+                const samples = new Float32Array(numSamples);
+                let peak = 0;
+
+                for (let i = 0; i < numSamples; i++) {
+                    let sampleValue = 0;
+                    for (let ch = 0; ch < numChannels; ch++) {
+                        const sampleIndex = dataOffset + (i * numChannels + ch) * (bitDepth / 8);
+                        let sample = bitDepth === 16
+                            ? dataView.getInt16(sampleIndex, true) / 32768
+                            : dataView.getInt8(sampleIndex) / 128;
+                        sampleValue += sample;
+                    }
+                    sampleValue /= numChannels;
+                    samples[i] = sampleValue;
+                    peak = Math.max(peak, Math.abs(sampleValue));
+                }
+
+                if (peak > 0) {
+                    for (let i = 0; i < samples.length; i++) {
+                        samples[i] /= peak;
+                    }
+                }
+
+                const scaledSamples = scaleSamples(samples, pwmResolution);
+
+                sampleDefinitions += `    { ${sampleIndex}, &${fileName}[0], ${numSamples}, "${fileName}" },\n`;
+                sampleArrays += `const int16_t ${fileName}[] PROGMEM = {\n`;
+                for (let i = 0; i < scaledSamples.length; i++) {
+                    sampleArrays += `${scaledSamples[i]}, `;
+                    if (i % 10 === 9) sampleArrays += "\n";
+                }
+                sampleArrays += "};\n\n";
+
+                sampleIndex++;
+            }
+
+            sampleDefinitions += "};\n\n";
+            const fullHeaderFile = headerFile + sampleDefinitions + sampleArrays;
+
+            return new Response(fullHeaderFile, {
+                status: 200,
+                headers: {
+                    "Content-Type": "application/octet-stream",
+                    "Content-Disposition": `attachment; filename="converted_samples.h"`,
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                },
             });
 
-            if (response.ok) {
-                progressBar.style.width = "100%";
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "converted_samples.h";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            } else {
-                alert("Error: " + await response.text());
-            }
+        } catch (error) {
+            console.error("Worker Error:", error);
+            return new Response("Internal Server Error", { status: 500 });
         }
-    </script>
+    },
+};
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const dropArea = document.getElementById("dropArea");
+            const fileInput = document.getElementById("fileInput");
 
-</body>
-</html>
+            dropArea.addEventListener("dragover", (event) => {
+                event.preventDefault();
+                dropArea.style.borderColor = "grey";
+            });
+
+            dropArea.addEventListener("dragleave", () => {
+                dropArea.style.borderColor = "white";
+            });
+
+            dropArea.addEventListener("drop", (event) => {
+                event.preventDefault();
+                dropArea.style.borderColor = "white";
+                fileInput.files = event.dataTransfer.files;
+            });
+
+            dropArea.addEventListener("click", () => fileInput.click());
+        });
+    </script>
+    
