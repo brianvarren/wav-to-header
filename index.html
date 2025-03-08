@@ -74,6 +74,7 @@
             display: flex;
             margin: 30px 0 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            justify-content: center;
         }
 
         .tab {
@@ -201,6 +202,23 @@
             font-family: monospace;
             font-style: normal;
         }
+        
+        pre {
+            background-color: rgba(30, 30, 30, 0.8);
+            border-radius: 5px;
+            padding: 15px;
+            overflow-x: auto;
+            text-align: left;
+            margin: 15px 0;
+        }
+        
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            display: block;
+            line-height: 1.5;
+            color: #ddd;
+        }
 
         footer {
             padding: 20px;
@@ -316,8 +334,7 @@
                 <p>
                     Here's a simple example of playing a sample using PWM on an RP2040:
                 </p>
-                <pre><code>
-#include "converted_samples.h"
+                <pre><code>#include "converted_samples.h"
 
 // Set up PWM on pin 0
 void setup() {
@@ -332,8 +349,7 @@ void loop() {
     delayMicroseconds(22);  // ~44.1kHz sample rate
   }
   delay(1000);  // Wait before repeating
-}
-                </code></pre>
+}</code></pre>
             </div>
         </div>
     </div>
