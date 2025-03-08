@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>wav-to-header</title>
+    <title>wav-to-header | Synth Foundry</title>
     <link href="https://fonts.googleapis.com/css2?family=CMU+Serif:ital@1&display=swap" rel="stylesheet">
     <style>
         @font-face {
@@ -22,24 +22,83 @@
             text-align: center;
             margin: 0;
             padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            flex: 1;
         }
         
         h1 {
-            font-size: 2rem;
+            font-size: 2.5rem;
             margin-top: 20px;
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            margin: -5px auto 25px;
+            opacity: 0.7;
         }
 
         .description {
             font-size: 1.25rem;
-            margin: 15px auto;
+            margin: 15px auto 30px;
             line-height: 1.5;
             color: #ddd;
+        }
+
+        .info-section {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .info-section h2 {
+            margin-top: 0;
+            font-size: 1.4rem;
+        }
+
+        .info-section p {
+            margin-bottom: 0;
+            line-height: 1.6;
+        }
+
+        .tabs {
+            display: flex;
+            margin: 30px 0 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: #aaa;
+            font-family: 'CMU Serif', serif;
+            font-style: italic;
+            font-size: 1.1rem;
+        }
+
+        .tab.active {
+            color: white;
+            border-bottom: 2px solid white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px 0;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         .upload-container {
@@ -76,6 +135,7 @@
             margin-left: 10px;
             width: 100px;
             text-align: center;
+            font-family: inherit;
         }
 
         button {
@@ -87,6 +147,7 @@
             cursor: pointer;
             font-style: italic;
             margin-top: 10px;
+            font-family: inherit;
         }
 
         button:hover {
@@ -123,37 +184,175 @@
             padding: 8px;
             border-radius: 3px;
         }
+
+        code {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-style: normal;
+        }
+
+        footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 40px;
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: white;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        footer a:hover {
+            opacity: 0.7;
+        }
+
+        .youtube-link {
+            display: inline-block;
+            padding: 5px 15px;
+            background-color: rgba(255, 0, 0, 0.8);
+            border-radius: 4px;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>wav-to-header</h1>
+        <div class="tagline">A simple tool for embedded audio projects</div>
 
         <p class="description">
-            This converts .wav files to C header files for use in embedded audio projects.
-            <br><br>
+            This tool converts .wav audio files into C header files ready for use in microcontroller projects.
+            Perfect for samplers, sound effects modules, and other low-memory audio applications.
         </p>
 
-        <div class="upload-container">
-            <div class="resolution-control">
-                <label for="pwmResolution">PWM Resolution:</label>
-                <input type="number" id="pwmResolution" value="4096" min="256" max="65535" step="1">
-            </div>
-        
-            <div class="drop-area" id="dropArea">
-                Drag & Drop WAV files here or <span style="text-decoration: underline;">click to browse</span>
-                <input type="file" id="fileInput" multiple accept=".wav">
-            </div>
-            <ul id="fileList"></ul>
-            <button onclick="uploadFiles()">Convert</button>
+        <div class="tabs">
+            <button class="tab active" onclick="openTab(event, 'converter')">Converter</button>
+            <button class="tab" onclick="openTab(event, 'about')">How It Works</button>
+            <button class="tab" onclick="openTab(event, 'usage')">Usage</button>
         </div>
 
-        <div class="progress-bar">
-            <div class="progress-bar-inner" id="progress"></div>
+        <div id="converter" class="tab-content active">
+            <div class="upload-container">
+                <div class="resolution-control">
+                    <label for="pwmResolution">PWM Resolution:</label>
+                    <input type="number" id="pwmResolution" value="4096" min="256" max="65535" step="1">
+                </div>
+            
+                <div class="drop-area" id="dropArea">
+                    Drag & Drop WAV files here or <span style="text-decoration: underline;">click to browse</span>
+                    <input type="file" id="fileInput" multiple accept=".wav">
+                </div>
+                <ul id="fileList"></ul>
+                <button onclick="uploadFiles()">Convert</button>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-bar-inner" id="progress"></div>
+            </div>
+        </div>
+
+        <div id="about" class="tab-content">
+            <div class="info-section">
+                <h2>What This Tool Does</h2>
+                <p>
+                    The wav-to-header tool takes audio files in .wav format and converts them into C/C++ arrays
+                    that can be embedded directly in microcontroller projects. This allows you to include
+                    sound samples in your Arduino, RP2040, or other embedded projects without external storage.
+                </p>
+            </div>
+            
+            <div class="info-section">
+                <h2>Conversion Process</h2>
+                <p>
+                    When you upload a WAV file, the tool:
+                </p>
+                <ul>
+                    <li>Reads the audio data from your WAV file</li>
+                    <li>Converts stereo to mono by averaging channels (if necessary)</li>
+                    <li>Normalizes the audio to use the full dynamic range</li>
+                    <li>Scales the values to fit your specified PWM resolution</li>
+                    <li>Generates a C header file with the sample data as arrays</li>
+                </ul>
+                <p>
+                    The resulting header file contains sample data that can be played back using PWM output
+                    or a DAC on your microcontroller.
+                </p>
+            </div>
+        </div>
+
+        <div id="usage" class="tab-content">
+            <div class="info-section">
+                <h2>How To Use The Header File</h2>
+                <p>
+                    The generated header file contains arrays for each sample along with a structure that 
+                    includes metadata like sample name, size, and data pointer.
+                </p>
+                <p>
+                    To use it in your project:
+                </p>
+                <ol>
+                    <li>Download the generated header file</li>
+                    <li>Include it in your Arduino/RP2040 project with <code>#include "converted_samples.h"</code></li>
+                    <li>Access your samples via the sample array, eg: <code>sample[0].data</code></li>
+                </ol>
+            </div>
+            
+            <div class="info-section">
+                <h2>Playback Example</h2>
+                <p>
+                    Here's a simple example of playing a sample using PWM on an RP2040:
+                </p>
+                <pre><code>
+#include "converted_samples.h"
+
+// Set up PWM on pin 0
+void setup() {
+  analogWriteFreq(44100);  // Set PWM frequency to match sample rate
+  analogWriteResolution(12);  // For 12-bit PWM (0-4095)
+}
+
+void loop() {
+  // Play sample 0
+  for (uint32_t i = 0; i < sample[0].size; i++) {
+    analogWrite(0, sample[0].data[i]);
+    delayMicroseconds(22);  // ~44.1kHz sample rate
+  }
+  delay(1000);  // Wait before repeating
+}
+                </code></pre>
+            </div>
         </div>
     </div>
 
+    <footer>
+        <p>Part of the Synth Foundry Project</p>
+        <a href="https://www.youtube.com/channel/SYNTHNOUNDRY" class="youtube-link">Watch on YouTube</a>
+        <p>Created for building DIY samplers and sound modules with open-source hardware</p>
+    </footer>
+
     <script>
+        function openTab(evt, tabName) {
+            // Hide all tab content
+            const tabContents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].className = tabContents[i].className.replace(" active", "");
+            }
+
+            // Remove "active" class from all tabs
+            const tabs = document.getElementsByClassName("tab");
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].className = tabs[i].className.replace(" active", "");
+            }
+
+            // Show the current tab and add "active" class to the button that opened it
+            document.getElementById(tabName).className += " active";
+            evt.currentTarget.className += " active";
+        }
+        
         const dropArea = document.getElementById("dropArea");
         const fileInput = document.getElementById("fileInput");
         const fileList = document.getElementById("fileList");
@@ -206,23 +405,27 @@
             const progressBar = document.getElementById("progress");
             progressBar.style.width = "0%";
 
-            const response = await fetch("https://wav-to-header.brianvarren.workers.dev", {
-                method: "POST",
-                body: formData,
-            });
+            try {
+                const response = await fetch("https://wav-to-header.brianvarren.workers.dev", {
+                    method: "POST",
+                    body: formData,
+                });
 
-            if (response.ok) {
-                progressBar.style.width = "100%";
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "converted_samples.h";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            } else {
-                alert("Error: " + await response.text());
+                if (response.ok) {
+                    progressBar.style.width = "100%";
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "converted_samples.h";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } else {
+                    alert("Error: " + await response.text());
+                }
+            } catch (error) {
+                alert("Network error: " + error.message);
             }
         }
     </script>
