@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>wav-to-header | Synth Foundry</title>
-    <link href="https://fonts.googleapis.com/css2?family=CMU+Serif:ital@1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
     <style>
         @font-face {
-            font-family: 'CMU Serif';
-            src: url('fonts/cmunrm.woff2') format('woff2'),
-                url('fonts/cmunrm.woff') format('woff');
+            font-family: 'IBM Plex Mono';
+            src: url('https://fonts.gstatic.com/s/ibmplexmono/v7/Zx-HVnzr-WD9U5xTZMyfP9GFJ9A.woff2') format('woff2');
             font-weight: normal;
             font-style: normal;
         }
@@ -17,8 +16,7 @@
         body {
             background-color: black;
             color: white;
-            font-family: 'CMU Serif', serif;
-            font-style: normal;
+            font-family: 'IBM Plex Mono', monospace;
             text-align: center;
             margin: 0;
             padding: 0;
@@ -37,12 +35,14 @@
         h1 {
             font-size: 3rem;
             margin-top: 20px;
+            font-weight: 500;
         }
 
         .tagline {
             font-size: 1.4rem;
             margin: -5px auto 25px;
             opacity: 0.7;
+            font-style: italic;
         }
 
         .description {
@@ -63,10 +63,12 @@
         .info-section h2 {
             margin-top: 0;
             font-size: 1.8rem;
+            font-weight: 500;
         }
         
         .info-section h3 {
             font-size: 1.5rem;
+            font-weight: 500;
         }
 
         .info-section p, .info-section li {
@@ -93,8 +95,7 @@
             background: none;
             border: none;
             color: #aaa;
-            font-family: 'CMU Serif', serif;
-            font-style: italic;
+            font-family: 'IBM Plex Mono', monospace;
             font-size: 1.25rem;
         }
 
@@ -147,7 +148,7 @@
             margin-left: 10px;
             width: 120px;
             text-align: center;
-            font-family: inherit;
+            font-family: 'IBM Plex Mono', monospace;
             font-size: 1.2rem;
         }
         
@@ -167,9 +168,8 @@
             padding: 12px 36px;
             border: none;
             cursor: pointer;
-            font-style: italic;
             margin-top: 15px;
-            font-family: inherit;
+            font-family: 'IBM Plex Mono', monospace;
         }
 
         button:hover {
@@ -211,7 +211,7 @@
             background-color: rgba(255, 255, 255, 0.1);
             padding: 2px 5px;
             border-radius: 3px;
-            font-family: monospace;
+            font-family: 'IBM Plex Mono', monospace;
             font-style: normal;
             font-size: 1.05rem;
         }
