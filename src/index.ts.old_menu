@@ -17,8 +17,8 @@ export default {
                 return new Response("No valid WAV files uploaded", { status: 400 });
             }
 
-            const pwmResolutionStr = formData.get("pwmResolution") || "4096";
-            const pwmResolution = Math.max(256, Math.min(65535, parseInt(pwmResolutionStr, 10) || 4096)); // Default to 12-bit
+            const pwmResolutionStr = formData.get("pwmResolution");
+            const pwmResolution = pwmResolutionStr ? parseInt(pwmResolutionStr, 10) : 12; // Default to 12-bit
 
             let headerFile = `#define NUM_SAMPLES ${files.length}\n\nstruct SampleData {\n`;
             headerFile += `    const uint16_t index;\n    const int16_t* data;\n    const uint32_t size;\n    const char* name;\n};\n\n`;
