@@ -260,6 +260,7 @@
             <button class="tab active" onclick="openTab(event, 'converter')">Converter</button>
             <button class="tab" onclick="openTab(event, 'about')">How It Works</button>
             <button class="tab" onclick="openTab(event, 'usage')">Usage</button>
+            <button class="tab" onclick="openTab(event, 'code')">Under The Hood</button>
         </div>
 
         <div id="converter" class="tab-content active">
@@ -302,12 +303,202 @@
                     <li>Reads the audio data from your WAV file</li>
                     <li>Converts stereo to mono by averaging channels (if necessary)</li>
                     <li>Normalizes the audio to use the full dynamic range</li>
-                    <li>Scales the values to fit your specified PWM resolution</li>
+                    <li>Scales the values to fit your specified output resolution</li>
                     <li>Generates a C header file with the sample data as arrays</li>
                 </ul>
                 <p>
                     The resulting header file contains sample data that can be played back using PWM output
                     or a DAC on your microcontroller.
+                </p>
+            </div>
+        </div>
+
+        <div id="code" class="tab-content">
+            <div class="info-section">
+                <h2>Revealing What's Behind The Curtain</h2>
+                <p>
+                    This tool embodies the DIY ethos - it's simple technology that you could build yourself.
+                    Let's break down how it actually works under the hood.
+                </p>
+            </div>
+
+            <div class="info-section">
+                <h2>The Technology Stack</h2>
+                <p>
+                    This tool runs on:
+                </p>
+                <ul>
+                    <li><strong>Frontend</strong>: Simple HTML, CSS, and JavaScript (what you're looking at now)</li>
+                    <li><strong>Backend</strong>: A Cloudflare Worker running TypeScript code</li>
+                </ul>
+                <p>
+                    <strong>What is TypeScript?</strong> It's JavaScript with type annotations, making it more robust and easier to maintain.
+                    When deployed, it compiles down to regular JavaScript that runs in the browser or on servers.
+                </p>
+                <p>
+                    <strong>What is a Cloudflare Worker?</strong> It's a serverless function that runs on Cloudflare's edge network.
+                    Instead of having a dedicated server, the code executes on-demand when you upload files. This means:
+                </p>
+                <ul>
+                    <li>The tool can handle processing without any server setup</li>
+                    <li>It scales automatically to handle any number of users</li>
+                    <li>There's minimal latency because it runs close to users geographically</li>
+                </ul>
+            </div>
+
+            <div class="info-section">
+                <h2>The Core Algorithm</h2>
+                <p>
+                    The heart of this tool is surprisingly simple. Here's what happens when you upload a WAV file:
+                </p>
+                
+                <h3>1. Parsing the WAV File</h3>
+                <pre><code>// Reading WAV header information
+const riffHeader = new TextDecoder().decode(arrayBuffer.slice(0, 4));
+const waveHeader = new TextDecoder().decode(arrayBuffer.slice(8, 12));
+const numChannels = dataView.getUint16(22, true);
+const bitDepth = dataView.getUint16(34, true);</code></pre>
+                <p>
+                    This code reads the WAV file header to understand its format - how many channels it has, 
+                    what bit depth it uses, etc. WAV files follow a standard format with specific bytes 
+                    representing different properties.
+                </p>
+                
+                <h3>2. Finding & Reading the Audio Data</h3>
+                <pre><code>// Finding the data chunk in the WAV file
+let dataOffset = 12;
+let foundDataChunk = false;
+
+while (dataOffset < arrayBuffer.byteLength) {
+    const chunkId = new TextDecoder().decode(arrayBuffer.slice(dataOffset, dataOffset + 4));
+    const chunkSize = dataView.getUint32(dataOffset + 4, true);
+    if (chunkId.trim() === "data") {
+        dataOffset += 8;
+        foundDataChunk = true;
+        break;
+    }
+    dataOffset += 8 + chunkSize;
+}</code></pre>
+                <p>
+                    This loop scans through the WAV file looking for the "data" chunk, which contains the actual 
+                    audio samples. WAV files can contain multiple chunks of different types, so we need to find
+                    the right one.
+                </p>
+                
+                <h3>3. Converting Audio to Floating-Point Values</h3>
+                <pre><code>// Converting audio samples to normalized -1.0 to 1.0 range
+const samples = new Float32Array(numSamples);
+let peak = 0;
+
+for (let i = 0; i < numSamples; i++) {
+    let sampleValue = 0;
+    for (let ch = 0; ch < numChannels; ch++) {
+        const sampleIndex = dataOffset + (i * numChannels + ch) * (bitDepth / 8);
+        let sample = bitDepth === 16
+            ? dataView.getInt16(sampleIndex, true) / 32768
+            : dataView.getInt8(sampleIndex) / 128;
+        sampleValue += sample;
+    }
+    sampleValue /= numChannels;
+    samples[i] = sampleValue;
+    peak = Math.max(peak, Math.abs(sampleValue));
+}</code></pre>
+                <p>
+                    Here, the raw bytes are converted to audio sample values. For stereo files, we
+                    average the channels to get mono. The values are normalized to the range of -1.0 to 1.0
+                    regardless of the original bit depth.
+                </p>
+                
+                <h3>4. Normalizing the Audio</h3>
+                <pre><code>// Normalizing to maximum amplitude
+if (peak > 0) {
+    for (let i = 0; i < samples.length; i++) {
+        samples[i] /= peak;
+    }
+}</code></pre>
+                <p>
+                    This ensures the audio uses the full dynamic range by scaling all samples 
+                    according to the peak value found, maximizing the resolution of the output.
+                </p>
+                
+                <h3>5. The Key Conversion: Scaling to Output Resolution</h3>
+                <pre><code>// This is the heart of the conversion process
+function scaleSamples(samples: Float32Array, pwmResolution: number): Int16Array {
+    const maxValue = pwmResolution - 1; // Maximum value for the given resolution
+    let scaledSamples = new Int16Array(samples.length);
+
+    for (let i = 0; i < samples.length; i++) {
+        // Convert from -1.0 to 1.0 range to 0 to maxValue range
+        scaledSamples[i] = Math.round(((samples[i] + 1.0) / 2.0) * maxValue);
+    }
+
+    return scaledSamples;
+}</code></pre>
+                <p>
+                    This is where the magic happens! The normalized audio values (between -1 and 1) 
+                    are shifted and scaled to fit between 0 and your chosen resolution value. This 
+                    makes them ready for output through a PWM or DAC system on your microcontroller.
+                </p>
+                
+                <h3>6. Generating the Header File</h3>
+                <pre><code>// Creating the C header file structure
+let headerFile = `#define NUM_SAMPLES ${files.length}\n\nstruct SampleData {\n`;
+headerFile += `    const uint16_t index;\n    const int16_t* data;\n    const uint32_t size;\n    const char* name;\n};\n\n`;
+
+let sampleDefinitions = `SampleData sample[NUM_SAMPLES] = {\n`;
+let sampleArrays = ``;
+
+// For each sample, add its data to the header
+sampleArrays += `const int16_t ${fileName}[] PROGMEM = {\n`;
+for (let i = 0; i < scaledSamples.length; i++) {
+    sampleArrays += `${scaledSamples[i]}, `;
+    if (i % 10 === 9) sampleArrays += "\n";
+}
+sampleArrays += "};\n\n";</code></pre>
+                <p>
+                    Finally, the program formats all the data into a usable C header file. The PROGMEM 
+                    directive tells Arduino/RP2040 to store the data in program memory rather than RAM,
+                    which is crucial for larger samples.
+                </p>
+            </div>
+            
+            <div class="info-section">
+                <h2>Safety Features vs. Core Functionality</h2>
+                <p>
+                    Much of the code exists for robustness rather than core functionality:
+                </p>
+                <ul>
+                    <li><strong>Core Functionality</strong>: Reading WAV data, normalizing, scaling to output range, generating C arrays</li>
+                    <li><strong>Safety/Optimization</strong>: File validation, error handling, chunk parsing, formatting the output nicely</li>
+                </ul>
+                <p>
+                    If you wanted to build this yourself, you could strip it down to the essential algorithm:
+                </p>
+                <ol>
+                    <li>Read the raw audio samples from a WAV file</li>
+                    <li>Convert them to floating point and normalize</li>
+                    <li>Scale and shift to your output range (0 to resolution-1)</li>
+                    <li>Format as C arrays in a header file</li>
+                </ol>
+                <p>
+                    With just a few dozen lines of code, you could create a basic version of this tool yourself!
+                </p>
+            </div>
+            
+            <div class="info-section">
+                <h2>Building Your Own</h2>
+                <p>
+                    Understanding how this works empowers you to:
+                </p>
+                <ul>
+                    <li>Modify the code to output different formats</li>
+                    <li>Change how normalization works</li>
+                    <li>Add effects or transformations to the audio</li>
+                    <li>Build a similar tool that runs locally on your computer</li>
+                </ul>
+                <p>
+                    This tool isn't magic - it's a simple transformation that you can understand, modify, and recreate.
+                    That's the essence of DIY: demystifying technology and making it yours.
                 </p>
             </div>
         </div>
