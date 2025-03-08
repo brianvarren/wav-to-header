@@ -119,12 +119,7 @@
 
     <div class="upload-container">
         <label for="pwmResolution">PWM Resolution:</label>
-        <select id="pwmResolution">
-            <option value="12" selected>12-bit PWM</option>
-            <option value="10">10-bit PWM</option>
-            <option value="8">8-bit PWM</option>
-            <option value="6">6-bit PWM</option>
-        </select>
+        <input type="number" id="pwmResolution" value="4096" min="256" max="65535" step="1">
     
         <div class="drop-area" id="dropArea">
             Drag & Drop WAV files here or <span style="text-decoration: underline;">click to browse</span>
